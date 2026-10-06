@@ -10,7 +10,8 @@ import {
   Boxes,
   Binary,
   GraduationCap,
-  Sparkles,
+  HeartPulse,
+  UserPlus,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -25,6 +26,7 @@ export interface NavItem {
 interface Props {
   activeTab: string;
   onSelectTab: (tabId: string) => void;
+  onOpenAddPatient: () => void;
   activeCriticalAlerts: number;
   totalWaitingCount: number;
 }
@@ -32,6 +34,7 @@ interface Props {
 export const Sidebar: FC<Props> = ({
   activeTab,
   onSelectTab,
+  onOpenAddPatient,
   activeCriticalAlerts,
   totalWaitingCount,
 }) => {
@@ -98,21 +101,32 @@ export const Sidebar: FC<Props> = ({
       id: 'viva_prep',
       label: 'About / Viva Prep',
       icon: GraduationCap,
-      academicTag: 'Capstone Defence',
+      academicTag: 'Project Dossier',
     },
   ];
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
-      {/* Capstone Badge */}
+      {/* Hospital Department Branding */}
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Capstone Project</span>
+          <HeartPulse className="w-4 h-4 text-blue-500" />
+          <span>Emergency Department</span>
         </div>
         <div className="text-xs text-slate-400 mt-0.5 font-medium leading-relaxed">
-          DSA Emergency Triage Engine
+          Clinical Triage Command
         </div>
+      </div>
+
+      {/* Quick Add Patient Button in Sidebar */}
+      <div className="p-3 border-b border-slate-800/80">
+        <button
+          onClick={onOpenAddPatient}
+          className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>+ Add Patient Option</span>
+        </button>
       </div>
 
       {/* Navigation List */}

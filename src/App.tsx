@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { patientManager } from './services/PatientManager';
 import { alertManager } from './services/AlertManager';
 import { Patient } from './types/patient';
+import { UserSession } from './types/auth';
+import { LoginPage } from './components/LoginPage';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { TreatedPatientModal } from './components/modals/TreatedPatientModal';
@@ -25,7 +27,20 @@ import { DataStructuresView } from './components/views/DataStructuresView';
 import { ComplexityAnalysisView } from './components/views/ComplexityAnalysisView';
 import { VivaPrepView } from './components/views/VivaPrepView';
 
+const STORAGE_KEY_AUTH = 'er_triage_user_session_v1';
+
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_AUTH);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientToEdit, setPatientToEdit] = useState<Patient | null>(null);
@@ -57,6 +72,38 @@ export default function App() {
   const alerts = alertManager.getAlerts();
   const activeCriticalAlerts = alertManager.getActiveAlertCount();
 
+  const handleLogin = (session: UserSession) => {
+    setCurrentUser(session);
+    try {
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(session));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_AUTH);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleOpenIntakeFromLogin = () => {
+    const clerkSession: UserSession = {
+      id: 'intake-clerk',
+      name: 'Admissions Desk',
+      email: 'admissions@hospital.org',
+      role: 'Emergency Clerk',
+      avatarInitials: 'AD',
+      department: 'Emergency Intake Desk',
+      loginTime: Date.now(),
+    };
+    handleLogin(clerkSession);
+    setIsAddModalOpen(true);
+  };
+
   // Treat next patient action
   const handleTreatNext = () => {
     const result = patientManager.treatNextPatient();
@@ -70,7 +117,7 @@ export default function App() {
   const handleTreatSpecificPatient = (patientId: string) => {
     const p = patientManager.searchPatientAVL(patientId).patient;
     if (p) {
-      patientManager.deletePatient(p.id); // Or mark treated
+      patientManager.deletePatient(p.id);
       p.status = 'Treated';
       p.treatedAt = Date.now();
       patientManager.avlTree.insert(p);
@@ -94,15 +141,35 @@ export default function App() {
   // Suggest next ID (e.g. P127)
   const nextIdSuggestion = `P${(allPatients.length + 101).toString()}`;
 
+  // If user is not logged in, show professional login page
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPage
+          onLogin={handleLogin}
+          onOpenPatientIntake={handleOpenIntakeFromLogin}
+        />
+        <AddPatientModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          nextIdSuggestion={nextIdSuggestion}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
-      {/* Top Header Navbar */}
+      {/* Top Header Navbar (Without any Capstone DSA badge, with Add Patient and User Profile) */}
       <Navbar
         activeCriticalCount={activeCriticalAlerts}
+        currentUser={currentUser}
         onTreatNext={handleTreatNext}
+        onOpenAddPatient={() => setIsAddModalOpen(true)}
         onSelectPatient={(p) => setSelectedPatient(p)}
         onNavigateTab={(tab) => setActiveTab(tab)}
         onResetSamples={handleResetSamples}
+        onLogout={handleLogout}
       />
 
       {/* Main Layout: Left Sidebar + Viewport Content */}
@@ -113,6 +180,7 @@ export default function App() {
             setActiveTab(tab);
             if (tab !== 'severity_update') setSeverityUpdateTargetId(undefined);
           }}
+          onOpenAddPatient={() => setIsAddModalOpen(true)}
           activeCriticalAlerts={activeCriticalAlerts}
           totalWaitingCount={stats.waitingCount}
         />
